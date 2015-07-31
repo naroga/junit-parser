@@ -11,6 +11,32 @@ use Symfony\Component\DomCrawler\Crawler;
  */
 class ParserTest extends \PHPUnit_Framework_TestCase
 {
+
+    /**
+     * Returns a \Twig_Environment stub.
+     *
+     * @return mixed
+     */
+    protected function createTwig()
+    {
+        $twig = $this->getMockBuilder('Twig_Environment')->getMock();
+        $twig
+            ->method('render')
+            ->will($this->returnCallback(function ($template, $stats) {
+                $data =
+"Report results:<br />
+<br />
+Errors: " . $stats['errors'] . "<br />
+Failures: " . $stats['failures'] . "<br />
+Skipped: " . $stats['skipped'] . "<br />
+Tests: " . $stats['tests'] . "<br />
+Time: " . $stats['time'];
+                return $data;
+            }));
+
+        return $twig;
+    }
+
     /**
      * Tests if an exception is thrown for an invalid data format.
      *
@@ -18,7 +44,7 @@ class ParserTest extends \PHPUnit_Framework_TestCase
      */
     public function testThrowsExceptionOnInvalidFormat()
     {
-        $parser = new Parser;
+        $parser = new Parser($this->createTwig());
         $parser->parse('invalid-format');
     }
 
@@ -29,7 +55,7 @@ class ParserTest extends \PHPUnit_Framework_TestCase
      */
     public function testThrowsExceptionOnEmptyReport()
     {
-        $parser = new Parser;
+        $parser = new Parser($this->createTwig());
         $parser->parse('html');
     }
 
@@ -41,7 +67,7 @@ class ParserTest extends \PHPUnit_Framework_TestCase
      */
     public function testThrowsExceptionOnInvalidReport()
     {
-        $parser = new Parser("This is an invalid string");
+        $parser = new Parser($this->createTwig(), "This is an invalid string");
     }
 
     /**
@@ -49,17 +75,17 @@ class ParserTest extends \PHPUnit_Framework_TestCase
      */
     public function testConstructValidXML()
     {
-        $parser = new Parser('<?xml version="1.0"?><test><name>Pedro</name></test>');
+        $parser = new Parser($this->createTwig(), '<?xml version="1.0"?><test><name>Pedro</name></test>');
         $this->assertArrayHasKey('0', $parser->getReports());
 
-        $parser = new Parser(__DIR__ . '/../phpunit.xml');
+        $parser = new Parser($this->createTwig(), __DIR__ . '/../phpunit.xml');
         $this->assertArrayHasKey('0', $parser->getReports());
 
-        $parser = new Parser;
+        $parser = new Parser($this->createTwig());
         $parser->addXmlContent('<?xml version="1.0"?><test><name>Pedro</name></test>');
         $this->assertArrayHasKey('0', $parser->getReports());
 
-        $parser = new Parser();
+        $parser = new Parser($this->createTwig());
         $parser->addFileContent(__DIR__ . '/../phpunit.xml');
         $this->assertArrayHasKey('0', $parser->getReports());
     }
@@ -72,7 +98,7 @@ class ParserTest extends \PHPUnit_Framework_TestCase
      */
     public function testThrowsExceptionOnInvalidAddFileContent()
     {
-        $parser = new Parser;
+        $parser = new Parser($this->createTwig());
         $parser->addFileContent("Invalid XML");
     }
 
@@ -84,7 +110,24 @@ class ParserTest extends \PHPUnit_Framework_TestCase
      */
     public function testThrowsExceptionOnInvalidAddXmlContent()
     {
-        $parser = new Parser;
+        $parser = new Parser($this->createTwig());
         $parser->addXmlContent("Invalid XML");
+    }
+
+    public function testValidParsing()
+    {
+        $parser = new Parser($this->createTwig(), __DIR__ . '/valid-junit-sample1.xml');
+        $result = $parser->parse();
+        $expectedResult = <<<EOF
+Report results:<br />
+<br />
+Errors: 0<br />
+Failures: 1<br />
+Skipped: 1<br />
+Tests: 3<br />
+Time: 0.006
+EOF;
+        $this->assertEquals($expectedResult, $result);
+
     }
 }

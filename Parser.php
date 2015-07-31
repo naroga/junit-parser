@@ -12,6 +12,10 @@ use Symfony\Component\DomCrawler\Crawler;
  */
 class Parser
 {
+    /**
+     * @var array Supported formats.
+     */
+    public static $SUPPORTED_FORMATS = ['html', 'text'];
 
     /**
      * @var array All loaded reports.
@@ -19,14 +23,22 @@ class Parser
     protected $reports = [];
 
     /**
+     * @var Twig_Environment
+     */
+    protected $twig;
+
+    /**
      * Class constructor.
      *
+     * @param \Twig_Environment $twig A twig instance.
      * @param string $report The report content (XML).
      * @param string $charset The character encoding in the XML.
      * @throws InvalidReportException
      */
-    public function __construct($report = null, $charset = 'UTF-8')
+    public function __construct(\Twig_Environment $twig, $report = null, $charset = 'UTF-8')
     {
+        $this->twig = $twig;
+
         if (!empty($report)) {
             if (is_readable($report)) {
                 $this->addFileContent($report, $charset);
@@ -84,11 +96,13 @@ class Parser
     }
 
     /**
-     * @var array Supported formats.
+     * Parses all JUnit reports and provides a single summarized report.
+     *
+     * @param string $format Format of the generated summary (html|text)
+     * @return string Returns the report in the specified $format.
+     * @throws InvalidFormatException
+     * @throws InvalidReportException
      */
-    public static $SUPPORTED_FORMATS = ['html', 'text'];
-
-
     public function parse($format = 'html')
     {
 
@@ -101,11 +115,29 @@ class Parser
         }
 
         //Exits early if the report is not set or is not a Symfony Crawler instance.
-        if (empty($this->report) || !($this->report instanceof Crawler)) {
+        if (empty($this->reports)) {
             throw new InvalidReportException("Nothing to parse.");
         }
 
+        $stats = [
+            'failures' => 0,
+            'errors' => 0,
+            'skipped' => 0,
+            'tests' => 0,
+            'time' => 0
+        ];
 
+        /** @var Crawler $report */
+        foreach ($this->reports as $report) {
+            $report->filter('testsuite')->each(function ($node, $i) use (&$stats) {
+                foreach (array_keys($stats) as $key) {
+                    /** @var $node Crawler */
+                    $stats[$key] += $node->attr($key);
+                }
+            });
+        }
+
+        return $this->twig->render(__DIR__ . '/Resources/view/report.' . $format . '.twig', $stats);
     }
 
     /**
@@ -116,22 +148,27 @@ class Parser
      */
     public static function isStringValidXml($xml)
     {
-
+        //Exits early, if empty string.
         if (empty($xml)) {
             return false;
         }
 
+        //Backups libxml configuration.
         $internalErrors = libxml_use_internal_errors(true);
         $disableEntities = libxml_disable_entity_loader(true);
 
+        //Clear previous errors.
         libxml_clear_errors();
 
+        //Disables libxml errors and loads the XML.
         libxml_use_internal_errors(true);
         $doc = new \DOMDocument;
         $doc->loadXML($xml);
 
+        //Retrieves any errors in the process.
         $errors = libxml_get_errors();
 
+        //Restores previous libxml configuration.
         libxml_use_internal_errors($internalErrors);
         libxml_disable_entity_loader($disableEntities);
 
