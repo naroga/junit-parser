@@ -14,9 +14,9 @@ class Parser
 {
 
     /**
-     * @var Crawler The report object.
+     * @var array All loaded reports.
      */
-    protected $report;
+    protected $reports = [];
 
     /**
      * Class constructor.
@@ -47,8 +47,9 @@ class Parser
     public function addXmlContent($xml, $charset = 'UTF-8')
     {
         if (self::isStringValidXml($xml)) {
-            $this->report = new Crawler();
-            $this->report->addXmlContent($xml, $charset);
+            $crawler = new Crawler();
+            $crawler->addXmlContent($xml, $charset);
+            $this->reports[] = $crawler;
             return $this;
         } else {
             throw new InvalidReportException("The report is not a valid XML.");
@@ -68,7 +69,6 @@ class Parser
         if (!is_readable($path)) {
             throw new InvalidReportException("The report is not a readable path.");
         }
-        $this->report = new Crawler();
         $this->addXmlContent(file_get_contents($path), $charset);
         return $this;
     }
@@ -78,15 +78,16 @@ class Parser
      *
      * @return Crawler
      */
-    public function getReport()
+    public function getReports()
     {
-        return $this->report;
+        return $this->reports;
     }
 
     /**
      * @var array Supported formats.
      */
     public static $SUPPORTED_FORMATS = ['html', 'text'];
+
 
     public function parse($format = 'html')
     {
@@ -103,6 +104,8 @@ class Parser
         if (empty($this->report) || !($this->report instanceof Crawler)) {
             throw new InvalidReportException("Nothing to parse.");
         }
+
+
     }
 
     /**

@@ -50,18 +50,18 @@ class ParserTest extends \PHPUnit_Framework_TestCase
     public function testConstructValidXML()
     {
         $parser = new Parser('<?xml version="1.0"?><test><name>Pedro</name></test>');
-        $this->assertInstanceOf('Symfony\Component\DomCrawler\Crawler', $parser->getReport());
+        $this->assertArrayHasKey('0', $parser->getReports());
 
         $parser = new Parser(__DIR__ . '/../phpunit.xml');
-        $this->assertInstanceOf('Symfony\Component\DomCrawler\Crawler', $parser->getReport());
+        $this->assertArrayHasKey('0', $parser->getReports());
 
         $parser = new Parser;
         $parser->addXmlContent('<?xml version="1.0"?><test><name>Pedro</name></test>');
-        $this->assertInstanceOf('Symfony\Component\DomCrawler\Crawler', $parser->getReport());
+        $this->assertArrayHasKey('0', $parser->getReports());
 
         $parser = new Parser();
         $parser->addFileContent(__DIR__ . '/../phpunit.xml');
-        $this->assertInstanceOf('Symfony\Component\DomCrawler\Crawler', $parser->getReport());
+        $this->assertArrayHasKey('0', $parser->getReports());
     }
 
     /**

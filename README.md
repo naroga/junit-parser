@@ -27,6 +27,14 @@ Using this bundle is pretty straightforward. Get a JUnit report and tell the par
     $parser->parse('html'); //Returns HTML result.
     $parser->parse('text'); //Returns a plaintext result.
     
+You can also parse multiple xmls to the same report:
+
+    $parser = new Parser;
+    $parser->addXmlContent($report1);
+    $parser->addXmlContent($report2);
+    $parser->addFileContent($file_with_report3);
+    $parse->('html'); //Returns a single HTML result, with the sum of all reports.
+    
 3) Extending the templates
 --------------------------
 
